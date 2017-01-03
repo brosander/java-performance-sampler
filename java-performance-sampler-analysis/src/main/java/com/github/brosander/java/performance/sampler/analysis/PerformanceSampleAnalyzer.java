@@ -65,7 +65,12 @@ public class PerformanceSampleAnalyzer {
     public static void doRelevantElements(Pattern relevantPattern, PerformanceSampleElement performanceSampleElement, Map<String, PerformanceSampleElement> result) {
         for (Map.Entry<String, PerformanceSampleElement> stringElementEntry : performanceSampleElement.getCalls().entrySet()) {
             if (relevantPattern.matcher(stringElementEntry.getKey()).matches()) {
-                result.put(stringElementEntry.getKey(), stringElementEntry.getValue());
+                PerformanceSampleElement existing = result.get(stringElementEntry.getKey());
+                if (existing == null) {
+                    result.put(stringElementEntry.getKey(), stringElementEntry.getValue());
+                } else {
+                    merge(existing, stringElementEntry.getValue());
+                }
             } else {
                 doRelevantElements(relevantPattern, stringElementEntry.getValue(), result);
             }
@@ -75,6 +80,23 @@ public class PerformanceSampleAnalyzer {
     public static void updateCounts(PerformanceSampleElement performanceSampleElement) {
         performanceSampleElement.getCalls().values().forEach(PerformanceSampleAnalyzer::updateCounts);
         performanceSampleElement.setSamples(performanceSampleElement.getSamples() + performanceSampleElement.getCalls().values().stream().mapToLong(PerformanceSampleElement::getSamples).sum());
+    }
+
+    public static void merge(PerformanceSampleElement into, PerformanceSampleElement from) {
+        into.setSamples(into.getSamples() + from.getSamples());
+        Map<String, PerformanceSampleElement> intoCalls = into.getCalls();
+
+        for (Map.Entry<String, PerformanceSampleElement> fromEntry : from.getCalls().entrySet()) {
+            String key = fromEntry.getKey();
+            PerformanceSampleElement value = fromEntry.getValue();
+
+            PerformanceSampleElement existing = intoCalls.get(key);
+            if (existing == null) {
+                intoCalls.put(key, value);
+            } else {
+                merge(existing, value);
+            }
+        }
     }
 
     public static void main(String[] args) {
